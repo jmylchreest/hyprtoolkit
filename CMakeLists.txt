@@ -41,6 +41,18 @@ pkg_check_modules(
   hyprgraphics>=0.3.0
   aquamarine>=0.10.0)
 
+# Optional FFmpeg headers for video support
+# We only need headers at compile time - libraries are loaded via dlopen at runtime
+pkg_check_modules(FFMPEG QUIET libavcodec>=60 libavformat libavutil libswscale)
+if(FFMPEG_FOUND)
+  message(STATUS "FFmpeg headers found - video support enabled")
+  add_compile_definitions(HT_VIDEO_SUPPORT)
+  # Include paths only, no linking (runtime dlopen)
+  include_directories(SYSTEM ${FFMPEG_INCLUDE_DIRS})
+else()
+  message(STATUS "FFmpeg headers not found - video support disabled")
+endif()
+
 configure_file(hyprtoolkit.pc.in hyprtoolkit.pc @ONLY)
 
 set(CMAKE_CXX_STANDARD 23)

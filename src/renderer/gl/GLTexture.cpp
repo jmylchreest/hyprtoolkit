@@ -2,6 +2,13 @@
 #include "OpenGL.hpp"
 
 #include "../../core/InternalBackend.hpp"
+#include "../../element/video/FFmpegLoader.hpp"
+
+#include <aquamarine/buffer/Buffer.hpp>
+
+#ifndef GL_TEXTURE_EXTERNAL_OES
+#define GL_TEXTURE_EXTERNAL_OES 0x8D65
+#endif
 
 using namespace Hyprtoolkit;
 
@@ -72,6 +79,11 @@ void CGLTexture::destroy() {
     if (g_openGL)
         g_openGL->makeEGLCurrent();
 
+    if (m_eglImage != EGL_NO_IMAGE_KHR) {
+        g_openGL->destroyEGLImage(m_eglImage);
+        m_eglImage = EGL_NO_IMAGE_KHR;
+    }
+
     if (m_allocated) {
         GLCALL(glDeleteTextures(1, &m_texID));
         m_texID = 0;
@@ -95,4 +107,56 @@ eImageFitMode CGLTexture::fitMode() {
 
 Vector2D CGLTexture::size() {
     return m_size;
+}
+
+bool CGLTexture::uploadFromDmaBuf(const SDmaBufFrame& frame) {
+    if (!frame.valid())
+        return false;
+
+    // Destroy old EGLImage if exists
+    if (m_eglImage != EGL_NO_IMAGE_KHR) {
+        g_openGL->destroyEGLImage(m_eglImage);
+        m_eglImage = EGL_NO_IMAGE_KHR;
+    }
+
+    // Convert SDmaBufFrame to Aquamarine::SDMABUFAttrs
+    Aquamarine::SDMABUFAttrs attrs;
+    attrs.size     = {static_cast<int32_t>(frame.size.x), static_cast<int32_t>(frame.size.y)};
+    attrs.format   = frame.format;
+    attrs.modifier = frame.modifier;
+    attrs.planes   = frame.planes;
+    for (int i = 0; i < frame.planes && i < 4; ++i) {
+        attrs.fds[i]     = frame.fd; // All planes share the same fd for COMPOSED_LAYERS
+        attrs.offsets[i] = frame.offsets[i];
+        attrs.strides[i] = frame.strides[i];
+    }
+
+    // Create new EGLImage from DMA-BUF
+    m_eglImage = g_openGL->createEGLImage(attrs);
+
+    if (m_eglImage == EGL_NO_IMAGE_KHR) {
+        g_logger->log(HT_LOG_ERROR, "CGLTexture: failed to create EGLImage from DMA-BUF (format=0x{:x} modifier=0x{:x})",
+                      attrs.format, attrs.modifier);
+        return false;
+    }
+
+    // Allocate texture if needed
+    allocate();
+
+    // Use external texture target for EGLImage
+    m_target = GL_TEXTURE_EXTERNAL_OES;
+    m_type   = TEXTURE_EXTERNAL;
+    m_size   = frame.size;
+
+    // Bind and attach EGLImage to texture
+    GLCALL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, m_texID));
+    GLCALL(glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+    GLCALL(glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+    GLCALL(glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+    GLCALL(glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+
+    // Bind EGLImage to texture
+    g_openGL->m_proc.glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, m_eglImage);
+
+    return true;
 }

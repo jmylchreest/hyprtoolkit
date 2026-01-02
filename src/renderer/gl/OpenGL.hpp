@@ -53,6 +53,7 @@ namespace Hyprtoolkit {
         void                           initEGL(bool gbm);
         EGLDeviceEXT                   eglDeviceFromDRMFD(int drmFD);
         EGLImageKHR                    createEGLImage(const Aquamarine::SDMABUFAttrs& attrs);
+        void                           destroyEGLImage(EGLImageKHR image);
         void                           makeEGLCurrent();
         void                           unsetEGL();
         SP<CRenderbuffer>              getRBO(SP<Aquamarine::IBuffer> buf);
@@ -108,6 +109,7 @@ namespace Hyprtoolkit {
 
         CShader                        m_rectShader;
         CShader                        m_texShader;
+        CShader                        m_texShaderExt; // For GL_TEXTURE_EXTERNAL_OES (video DMA-BUF)
         CShader                        m_borderShader;
 
         Mat3x3                         m_projMatrix = Mat3x3::identity();

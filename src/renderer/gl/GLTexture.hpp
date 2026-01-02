@@ -6,11 +6,15 @@
 #include "GL.hpp"
 
 #include <cstdint>
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
 
 #include "../RendererTexture.hpp"
 #include "../../helpers/Memory.hpp"
 
 namespace Hyprtoolkit {
+
+    struct SDmaBufFrame;
     enum eGLTextureType : uint8_t {
         TEXTURE_INVALID,  // Invalid
         TEXTURE_RGBA,     // 4 channels
@@ -38,11 +42,15 @@ namespace Hyprtoolkit {
         GLuint                            m_texID     = 0;
         eImageFitMode                     m_fitMode   = IMAGE_FIT_MODE_STRETCH;
         Hyprutils::Math::Vector2D         m_size      = {};
+        EGLImageKHR                       m_eglImage  = EGL_NO_IMAGE_KHR;
 
         ASP<Hyprgraphics::IAsyncResource> m_resource;
 
         void                              upload();
         void                              allocate();
         void                              bind();
+
+        // Create external texture from DMA-BUF frame (for zero-copy video)
+        bool                              uploadFromDmaBuf(const SDmaBufFrame& frame);
     };
 };

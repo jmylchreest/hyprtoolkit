@@ -1,7 +1,12 @@
 #include "Video.hpp"
+#include "VideoFrameResource.hpp"
+
+#include <algorithm>
+#include <unistd.h>
 
 #include "../../layout/Positioner.hpp"
 #include "../../renderer/Renderer.hpp"
+#include "../../renderer/gl/GLTexture.hpp"
 #include "../../core/InternalBackend.hpp"
 #include "../../window/ToolkitWindow.hpp"
 #include "../../resource/assetCache/AssetCache.hpp"
@@ -23,6 +28,11 @@ SP<CVideoElement> CVideoElement::create(const SVideoData& data) {
     auto p          = SP<CVideoElement>(new CVideoElement(data));
     p->impl->self   = p;
     p->m_impl->self = p;
+
+    // Start playback AFTER self pointer is set (so timer lambda captures valid weak_ptr)
+    if (p->m_impl->playing && !p->m_impl->failed)
+        p->scheduleNextFrame();
+
     return p;
 }
 
@@ -44,15 +54,12 @@ CVideoElement::CVideoElement(const SVideoData& data) : IElement(), m_impl(makeUn
     }
 
     m_impl->videoSize = m_impl->decoder->size();
-    m_impl->targetFps = data.fps > 0 ? static_cast<double>(data.fps) : m_impl->decoder->fps();
+    double nativeFps  = m_impl->decoder->fps();
+    m_impl->targetFps = data.fps > 0 ? std::min(static_cast<double>(data.fps), nativeFps) : nativeFps;
 
     // Decode first frame immediately
     if (m_impl->decoder->decodeNextFrame())
         decodeAndUploadFrame();
-
-    // Schedule frame updates
-    if (m_impl->playing)
-        scheduleNextFrame();
 }
 
 void CVideoElement::scheduleNextFrame() {
@@ -83,15 +90,38 @@ void CVideoElement::decodeAndUploadFrame() {
     if (!m_impl->decoder || !m_impl->decoder->valid())
         return;
 
+    // Zero-copy DMA-BUF path (VAAPI only)
+    if (m_impl->decoder->dmaBufExportAvailable()) {
+        SDmaBufFrame dmaBuf = m_impl->decoder->exportFrameDmaBuf();
+        if (dmaBuf.valid()) {
+            // Create or reuse texture
+            if (!m_impl->texture)
+                m_impl->texture = makeShared<CGLTexture>();
+
+            auto glTex = reinterpretPointerCast<CGLTexture>(m_impl->texture);
+            if (glTex->uploadFromDmaBuf(dmaBuf)) {
+                glTex->m_fitMode = m_impl->data.fitMode;
+                close(dmaBuf.fd); // Close the DMA-BUF fd after EGLImage creation
+                impl->damageEntire();
+                return;
+            }
+
+            // Upload failed, close fd and fall through to CPU path
+            close(dmaBuf.fd);
+            g_logger->log(HT_LOG_DEBUG, "CVideoElement: DMA-BUF upload failed, falling back to CPU path");
+        } else {
+            g_logger->log(HT_LOG_DEBUG, "CVideoElement: DMA-BUF export returned invalid frame");
+        }
+    }
+
+    // CPU path: copy frame data and create Cairo surface
     const auto& frameData = m_impl->decoder->frameData();
     if (frameData.empty())
         return;
 
-    // Create image resource from RGBA frame data
     std::vector<uint8_t> dataCopy = frameData;
-    m_impl->resource              = makeAtomicShared<Hyprgraphics::CImageResource>(std::move(dataCopy), m_impl->videoSize);
+    m_impl->resource              = makeAtomicShared<CVideoFrameResource>(std::move(dataCopy), m_impl->videoSize);
 
-    // Process synchronously since we have the data ready
     g_asyncResourceGatherer->enqueue(ASP<Hyprgraphics::IAsyncResource>(m_impl->resource));
     g_asyncResourceGatherer->await(ASP<Hyprgraphics::IAsyncResource>(m_impl->resource));
 
@@ -100,7 +130,6 @@ void CVideoElement::decodeAndUploadFrame() {
         m_impl->texture = g_renderer->uploadTexture({.resource = resourceGeneric, .fitMode = m_impl->data.fitMode});
     }
 
-    // Trigger repaint
     impl->damageEntire();
 }
 
@@ -108,7 +137,6 @@ void CVideoElement::onFrameTimer() {
     if (!m_impl->playing || m_impl->failed)
         return;
 
-    // Decode next frame
     bool hasFrame = m_impl->decoder->decodeNextFrame();
 
     if (!hasFrame) {
@@ -161,7 +189,8 @@ void CVideoElement::replaceData(const SVideoData& data) {
     }
 
     m_impl->videoSize = m_impl->decoder->size();
-    m_impl->targetFps = data.fps > 0 ? static_cast<double>(data.fps) : m_impl->decoder->fps();
+    double nativeFps  = m_impl->decoder->fps();
+    m_impl->targetFps = data.fps > 0 ? std::min(static_cast<double>(data.fps), nativeFps) : nativeFps;
 
     // Decode first frame
     if (m_impl->decoder->decodeNextFrame())

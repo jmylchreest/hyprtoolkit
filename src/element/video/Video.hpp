@@ -4,8 +4,7 @@
 #include "../../helpers/Memory.hpp"
 #include "../../resource/assetCache/AssetCacheEntry.hpp"
 #include "FFmpegLoader.hpp"
-
-#include <hyprgraphics/resource/resources/ImageResource.hpp>
+#include "VideoFrameResource.hpp"
 
 namespace Hyprtoolkit {
     struct SVideoData {
@@ -13,18 +12,18 @@ namespace Hyprtoolkit {
         eImageFitMode fitMode = IMAGE_FIT_MODE_COVER;
         CDynamicSize  size{CDynamicSize::HT_SIZE_PERCENT, CDynamicSize::HT_SIZE_PERCENT, {1, 1}};
         bool          loop = true;
-        int           fps  = 0; // 0 = use video native fps
+        int           fps  = 0; // 0 = native fps, >0 = max fps (capped to video fps)
     };
 
     struct SVideoImpl {
-        SVideoData                                                            data;
+        SVideoData                                                             data;
 
-        WP<CVideoElement>                                                     self;
+        WP<CVideoElement>                                                      self;
 
-        UP<CFFmpegDecoder>                                                    decoder;
-        Hyprutils::Memory::CAtomicSharedPointer<Hyprgraphics::CImageResource> resource;
-        Hyprutils::Memory::CSharedPointer<Asset::CAssetCacheEntry>            cacheEntry;
-        SP<IRendererTexture>                                                  texture;
+        UP<CFFmpegDecoder>                                                     decoder;
+        Hyprutils::Memory::CAtomicSharedPointer<CVideoFrameResource>           resource;
+        Hyprutils::Memory::CSharedPointer<Asset::CAssetCacheEntry>             cacheEntry;
+        SP<IRendererTexture>                                                   texture;
 
         Hyprutils::Math::Vector2D                                             videoSize;
         ASP<CTimer>                                                           frameTimer;

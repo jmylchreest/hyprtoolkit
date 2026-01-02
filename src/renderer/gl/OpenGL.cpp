@@ -275,6 +275,11 @@ EGLImageKHR COpenGLRenderer::createEGLImage(const Aquamarine::SDMABUFAttrs& attr
     return image;
 }
 
+void COpenGLRenderer::destroyEGLImage(EGLImageKHR image) {
+    if (image != EGL_NO_IMAGE_KHR && m_proc.eglDestroyImageKHR)
+        m_proc.eglDestroyImageKHR(m_eglDisplay, image);
+}
+
 static bool drmDeviceHasName(const drmDevice* device, const std::string& name) {
     for (size_t i = 0; i < DRM_NODE_MAX; i++) {
         if (!(device->available_nodes & (1 << i)))
@@ -459,10 +464,11 @@ COpenGLRenderer::COpenGLRenderer(int drmFD) : m_drmFD(drmFD) {
     loadShaderInclude("rounding.glsl", includes);
     loadShaderInclude("CM.glsl", includes);
 
-    const auto VERTSRC        = processShader("tex300.vert", includes);
-    const auto FRAGBORDER1    = processShader("border.frag", includes);
-    const auto QUADFRAGSRC    = processShader("quad.frag", includes);
-    const auto TEXFRAGSRCRGBA = processShader("rgba.frag", includes);
+    const auto VERTSRC           = processShader("tex300.vert", includes);
+    const auto FRAGBORDER1       = processShader("border.frag", includes);
+    const auto QUADFRAGSRC       = processShader("quad.frag", includes);
+    const auto TEXFRAGSRCRGBA    = processShader("rgba.frag", includes);
+    const auto TEXFRAGSRCEXT     = processShader("rgba_external.frag", includes);
 
     GLuint     prog            = createProgram(VERTSRC, QUADFRAGSRC);
     m_rectShader.program       = prog;
@@ -493,6 +499,24 @@ COpenGLRenderer::COpenGLRenderer(int drmFD) : m_drmFD(drmFD) {
     m_texShader.tint              = glGetUniformLocation(prog, "tint");
     m_texShader.useAlphaMatte     = glGetUniformLocation(prog, "useAlphaMatte");
     m_texShader.roundingPower     = glGetUniformLocation(prog, "roundingPower");
+
+    // External texture shader (for GL_TEXTURE_EXTERNAL_OES / video DMA-BUF)
+    prog                             = createProgram(VERTSRC, TEXFRAGSRCEXT);
+    m_texShaderExt.program           = prog;
+    m_texShaderExt.proj              = glGetUniformLocation(prog, "proj");
+    m_texShaderExt.tex               = glGetUniformLocation(prog, "tex");
+    m_texShaderExt.alpha             = glGetUniformLocation(prog, "alpha");
+    m_texShaderExt.texAttrib         = glGetAttribLocation(prog, "texcoord");
+    m_texShaderExt.posAttrib         = glGetAttribLocation(prog, "pos");
+    m_texShaderExt.discardOpaque     = glGetUniformLocation(prog, "discardOpaque");
+    m_texShaderExt.discardAlpha      = glGetUniformLocation(prog, "discardAlpha");
+    m_texShaderExt.discardAlphaValue = glGetUniformLocation(prog, "discardAlphaValue");
+    m_texShaderExt.topLeft           = glGetUniformLocation(prog, "topLeft");
+    m_texShaderExt.fullSize          = glGetUniformLocation(prog, "fullSize");
+    m_texShaderExt.radius            = glGetUniformLocation(prog, "radius");
+    m_texShaderExt.applyTint         = glGetUniformLocation(prog, "applyTint");
+    m_texShaderExt.tint              = glGetUniformLocation(prog, "tint");
+    m_texShaderExt.roundingPower     = glGetUniformLocation(prog, "roundingPower");
 
     prog                                 = createProgram(VERTSRC, FRAGBORDER1);
     m_borderShader.program               = prog;
@@ -873,7 +897,8 @@ void COpenGLRenderer::renderTexture(const STextureRenderData& data) {
     if (DAMAGE.copy().intersect(UNTRANSFORMED).empty())
         return;
 
-    CShader* shader = &m_texShader;
+    // Select shader based on texture type
+    CShader* shader = tex->m_type == TEXTURE_EXTERNAL ? &m_texShaderExt : &m_texShader;
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(tex->m_target, tex->m_texID);
