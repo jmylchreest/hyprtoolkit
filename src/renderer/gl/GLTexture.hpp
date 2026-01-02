@@ -51,6 +51,6 @@ namespace Hyprtoolkit {
         void                              bind();
 
         // Create external texture from DMA-BUF frame (for zero-copy video)
-        bool                              uploadFromDmaBuf(const SDmaBufFrame& frame);
+        bool uploadFromDmaBuf(const SDmaBufFrame& frame);
     };
 };

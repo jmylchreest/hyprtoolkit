@@ -28,30 +28,64 @@ CFFmpegLoader::~CFFmpegLoader() {
     delete m_fn;
 }
 
-bool CFFmpegLoader::load() { return false; }
-bool CFFmpegLoader::probeHwAccel() { return false; }
-bool CFFmpegLoader::available() const { return false; }
-std::string CFFmpegLoader::hwAccelName() const { return ""; }
-unsigned CFFmpegLoader::versionMajor() const { return 0; }
-bool CFFmpegLoader::dmaBufExportSupported() const { return false; }
+bool CFFmpegLoader::load() {
+    return false;
+}
+bool CFFmpegLoader::probeHwAccel() {
+    return false;
+}
+bool CFFmpegLoader::available() const {
+    return false;
+}
+std::string CFFmpegLoader::hwAccelName() const {
+    return "";
+}
+unsigned CFFmpegLoader::versionMajor() const {
+    return 0;
+}
+bool CFFmpegLoader::dmaBufExportSupported() const {
+    return false;
+}
 
 CFFmpegDecoder::CFFmpegDecoder(const std::string&) {
     g_logger->log(HT_LOG_ERROR, "FFmpegDecoder: video support not compiled in");
 }
 CFFmpegDecoder::~CFFmpegDecoder() {}
-bool CFFmpegDecoder::valid() const { return false; }
-Hyprutils::Math::Vector2D CFFmpegDecoder::size() const { return {}; }
-double CFFmpegDecoder::fps() const { return 0; }
-double CFFmpegDecoder::duration() const { return 0; }
-bool CFFmpegDecoder::decodeNextFrame() { return false; }
-const std::vector<uint8_t>& CFFmpegDecoder::frameData() const { return m_frameBuffer; }
-SDmaBufFrame CFFmpegDecoder::exportFrameDmaBuf() { return {}; }
-bool CFFmpegDecoder::dmaBufExportAvailable() const { return false; }
+bool CFFmpegDecoder::valid() const {
+    return false;
+}
+Hyprutils::Math::Vector2D CFFmpegDecoder::size() const {
+    return {};
+}
+double CFFmpegDecoder::fps() const {
+    return 0;
+}
+double CFFmpegDecoder::duration() const {
+    return 0;
+}
+bool CFFmpegDecoder::decodeNextFrame() {
+    return false;
+}
+const std::vector<uint8_t>& CFFmpegDecoder::frameData() const {
+    return m_frameBuffer;
+}
+SDmaBufFrame CFFmpegDecoder::exportFrameDmaBuf() {
+    return {};
+}
+bool CFFmpegDecoder::dmaBufExportAvailable() const {
+    return false;
+}
 void CFFmpegDecoder::seek(double) {}
-bool CFFmpegDecoder::atEnd() const { return true; }
+bool CFFmpegDecoder::atEnd() const {
+    return true;
+}
 void CFFmpegDecoder::rewind() {}
-bool CFFmpegDecoder::setupHwAccel() { return false; }
-bool CFFmpegDecoder::setupSwsContext() { return false; }
+bool CFFmpegDecoder::setupHwAccel() {
+    return false;
+}
+bool CFFmpegDecoder::setupSwsContext() {
+    return false;
+}
 void CFFmpegDecoder::cleanup() {}
 
 #else
@@ -81,7 +115,7 @@ extern "C" {
 #endif
 
 // VAAPI function types for DMA-BUF export
-using VADisplay = void*;
+using VADisplay   = void*;
 using VASurfaceID = unsigned int;
 
 // VADRMPRIMESurfaceDescriptor for vaExportSurfaceHandle
@@ -105,16 +139,16 @@ struct VADRMPRIMESurfaceDescriptor {
     } layers[4];
 };
 
-#define VA_EXPORT_SURFACE_READ_ONLY        0x0001
-#define VA_EXPORT_SURFACE_WRITE_ONLY       0x0002
-#define VA_EXPORT_SURFACE_READ_WRITE       0x0003
-#define VA_EXPORT_SURFACE_SEPARATE_LAYERS  0x0004
-#define VA_EXPORT_SURFACE_COMPOSED_LAYERS  0x0008
+#define VA_EXPORT_SURFACE_READ_ONLY       0x0001
+#define VA_EXPORT_SURFACE_WRITE_ONLY      0x0002
+#define VA_EXPORT_SURFACE_READ_WRITE      0x0003
+#define VA_EXPORT_SURFACE_SEPARATE_LAYERS 0x0004
+#define VA_EXPORT_SURFACE_COMPOSED_LAYERS 0x0008
 
 #define VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2 0x40000000
 
 using vaExportSurfaceHandle_fn = int (*)(VADisplay, VASurfaceID, uint32_t, uint32_t, void*);
-using vaSyncSurface_fn = int (*)(VADisplay, VASurfaceID);
+using vaSyncSurface_fn         = int (*)(VADisplay, VASurfaceID);
 
 // Function pointer types
 using avformat_open_input_fn       = int (*)(AVFormatContext**, const char*, void*, void**);
@@ -132,9 +166,9 @@ using avcodec_send_packet_fn           = int (*)(AVCodecContext*, const AVPacket
 using avcodec_receive_frame_fn         = int (*)(AVCodecContext*, AVFrame*);
 using avcodec_free_context_fn          = void (*)(AVCodecContext**);
 using avcodec_flush_buffers_fn         = void (*)(AVCodecContext*);
-using avcodec_get_hw_config_fn = const AVCodecHWConfig* (*)(const AVCodec*, int);
-using av_codec_iterate_fn      = const AVCodec* (*)(void**);
-using av_codec_is_decoder_fn   = int (*)(const AVCodec*);
+using avcodec_get_hw_config_fn         = const AVCodecHWConfig* (*)(const AVCodec*, int);
+using av_codec_iterate_fn              = const AVCodec* (*)(void**);
+using av_codec_is_decoder_fn           = int (*)(const AVCodec*);
 
 using av_frame_alloc_fn  = AVFrame* (*)();
 using av_frame_free_fn   = void (*)(AVFrame**);
@@ -426,9 +460,7 @@ static bool codecSupportsVaapi(const AVCodec* codec, avcodec_get_hw_config_fn ge
 // Find a decoder that supports VAAPI hardware acceleration for the given codec ID
 // Iterates through all registered codecs to find one with VAAPI support
 // Returns the original codec if no HW-capable alternative is found
-static const AVCodec* findHwCapableDecoder(AVCodecID codecId, const AVCodec* originalCodec,
-                                           av_codec_iterate_fn codecIterate,
-                                           av_codec_is_decoder_fn isDecoder,
+static const AVCodec* findHwCapableDecoder(AVCodecID codecId, const AVCodec* originalCodec, av_codec_iterate_fn codecIterate, av_codec_is_decoder_fn isDecoder,
                                            avcodec_get_hw_config_fn getHwConfig) {
     // If the original codec supports VAAPI, use it
     if (codecSupportsVaapi(originalCodec, getHwConfig)) {
@@ -455,8 +487,7 @@ static const AVCodec* findHwCapableDecoder(AVCodecID codecId, const AVCodec* ori
 
         // Check if this decoder supports VAAPI
         if (codecSupportsVaapi(codec, getHwConfig)) {
-            g_logger->log(HT_LOG_DEBUG, "findHwCapableDecoder: using '{}' instead of '{}' for VAAPI support",
-                          codec->name, originalCodec->name);
+            g_logger->log(HT_LOG_DEBUG, "findHwCapableDecoder: using '{}' instead of '{}' for VAAPI support", codec->name, originalCodec->name);
             return codec;
         }
     }
@@ -558,7 +589,7 @@ CFFmpegDecoder::CFFmpegDecoder(const std::string& path) {
     AVFrame*  frame  = reinterpret_cast<AVFrame*>(m_frame);
     AVPacket* packet = reinterpret_cast<AVPacket*>(m_packet);
 
-    bool gotFrame = false;
+    bool      gotFrame = false;
     while (!gotFrame) {
         int ret = fn->av_read_frame(fmtCtx, packet);
         if (ret < 0) {
@@ -604,7 +635,7 @@ CFFmpegDecoder::CFFmpegDecoder(const std::string& path) {
     // Check if we actually got hardware frames
     if (m_useHwDec && (frame->format == AV_PIX_FMT_VAAPI || frame->format == AV_PIX_FMT_CUDA)) {
         // HW decoded - transfer first frame to get CPU pixel format
-        m_swFrame = fn->av_frame_alloc();
+        m_swFrame     = fn->av_frame_alloc();
         auto* swFrame = reinterpret_cast<AVFrame*>(m_swFrame);
         if (fn->av_hwframe_transfer_data(swFrame, frame, 0) < 0) {
             g_logger->log(HT_LOG_ERROR, "FFmpegDecoder: failed to transfer initial HW frame");
@@ -617,8 +648,7 @@ CFFmpegDecoder::CFFmpegDecoder(const std::string& path) {
         // Codec doesn't actually produce HW frames (e.g., libdav1d with VAAPI device set)
         // Disable DMA-BUF export since we won't have VAAPI surfaces
         if (m_dmaBufAvailable) {
-            g_logger->log(HT_LOG_DEBUG, "FFmpegDecoder: codec '{}' doesn't produce HW frames (format={}), disabling DMA-BUF",
-                          codec->name, static_cast<int>(frame->format));
+            g_logger->log(HT_LOG_DEBUG, "FFmpegDecoder: codec '{}' doesn't produce HW frames (format={}), disabling DMA-BUF", codec->name, static_cast<int>(frame->format));
             m_dmaBufAvailable = false;
         }
         m_pixelFormat = frame->format;
@@ -668,7 +698,7 @@ bool CFFmpegDecoder::setupHwAccel() {
     auto& loader = CFFmpegLoader::instance();
     auto* fn     = loader.m_fn;
 
-    int   hwType = AV_HWDEVICE_TYPE_NONE;
+    int   hwType  = AV_HWDEVICE_TYPE_NONE;
     bool  isVaapi = false;
     if (loader.hwAccelName() == "vaapi") {
         hwType  = AV_HWDEVICE_TYPE_VAAPI;
@@ -898,8 +928,7 @@ SDmaBufFrame CFFmpegDecoder::exportFrameDmaBuf() {
     SDmaBufFrame result;
 
     if (!m_valid || !m_dmaBufAvailable || !m_vaDisplay) {
-        g_logger->log(HT_LOG_DEBUG, "exportFrameDmaBuf: early return - valid={} dmaBuf={} vaDisplay={}",
-                      m_valid, m_dmaBufAvailable, m_vaDisplay != nullptr);
+        g_logger->log(HT_LOG_DEBUG, "exportFrameDmaBuf: early return - valid={} dmaBuf={} vaDisplay={}", m_valid, m_dmaBufAvailable, m_vaDisplay != nullptr);
         return result;
     }
 
@@ -929,8 +958,7 @@ SDmaBufFrame CFFmpegDecoder::exportFrameDmaBuf() {
 
     // Export surface as DRM PRIME (DMA-BUF)
     VADRMPRIMESurfaceDescriptor desc{};
-    int status = fn->vaExportSurfaceHandle(display, surface, VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2,
-                                           VA_EXPORT_SURFACE_READ_ONLY | VA_EXPORT_SURFACE_COMPOSED_LAYERS, &desc);
+    int status = fn->vaExportSurfaceHandle(display, surface, VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2, VA_EXPORT_SURFACE_READ_ONLY | VA_EXPORT_SURFACE_COMPOSED_LAYERS, &desc);
     if (status != 0) {
         g_logger->log(HT_LOG_ERROR, "FFmpegDecoder: vaExportSurfaceHandle failed with status {}", status);
         return result;

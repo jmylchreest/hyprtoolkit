@@ -464,11 +464,11 @@ COpenGLRenderer::COpenGLRenderer(int drmFD) : m_drmFD(drmFD) {
     loadShaderInclude("rounding.glsl", includes);
     loadShaderInclude("CM.glsl", includes);
 
-    const auto VERTSRC           = processShader("tex300.vert", includes);
-    const auto FRAGBORDER1       = processShader("border.frag", includes);
-    const auto QUADFRAGSRC       = processShader("quad.frag", includes);
-    const auto TEXFRAGSRCRGBA    = processShader("rgba.frag", includes);
-    const auto TEXFRAGSRCEXT     = processShader("rgba_external.frag", includes);
+    const auto VERTSRC        = processShader("tex300.vert", includes);
+    const auto FRAGBORDER1    = processShader("border.frag", includes);
+    const auto QUADFRAGSRC    = processShader("quad.frag", includes);
+    const auto TEXFRAGSRCRGBA = processShader("rgba.frag", includes);
+    const auto TEXFRAGSRCEXT  = processShader("rgba_external.frag", includes);
 
     GLuint     prog            = createProgram(VERTSRC, QUADFRAGSRC);
     m_rectShader.program       = prog;

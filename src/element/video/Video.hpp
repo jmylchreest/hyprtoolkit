@@ -16,23 +16,23 @@ namespace Hyprtoolkit {
     };
 
     struct SVideoImpl {
-        SVideoData                                                             data;
+        SVideoData                                                   data;
 
-        WP<CVideoElement>                                                      self;
+        WP<CVideoElement>                                            self;
 
-        UP<CFFmpegDecoder>                                                     decoder;
-        Hyprutils::Memory::CAtomicSharedPointer<CVideoFrameResource>           resource;
-        Hyprutils::Memory::CSharedPointer<Asset::CAssetCacheEntry>             cacheEntry;
-        SP<IRendererTexture>                                                   texture;
+        UP<CFFmpegDecoder>                                           decoder;
+        Hyprutils::Memory::CAtomicSharedPointer<CVideoFrameResource> resource;
+        Hyprutils::Memory::CSharedPointer<Asset::CAssetCacheEntry>   cacheEntry;
+        SP<IRendererTexture>                                         texture;
 
-        Hyprutils::Math::Vector2D                                             videoSize;
-        ASP<CTimer>                                                           frameTimer;
-        bool                                                                  playing = true;
-        bool                                                                  failed  = false;
+        Hyprutils::Math::Vector2D                                    videoSize;
+        ASP<CTimer>                                                  frameTimer;
+        bool                                                         playing = true;
+        bool                                                         failed  = false;
 
-        double                                                                targetFps = 30.0;
-        std::chrono::steady_clock::time_point                                 lastFrameTime;
+        double                                                       targetFps = 30.0;
+        std::chrono::steady_clock::time_point                        lastFrameTime;
 
-        std::string                                                           getCacheString() const;
+        std::string                                                  getCacheString() const;
     };
 }

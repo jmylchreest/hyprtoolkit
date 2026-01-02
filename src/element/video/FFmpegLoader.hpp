@@ -13,15 +13,17 @@ namespace Hyprtoolkit {
         Exported from VAAPI surfaces for direct EGLImage import.
     */
     struct SDmaBufFrame {
-        int                      fd       = -1; // DMA-BUF file descriptor (caller must close)
-        uint32_t                 format   = 0;  // DRM fourcc format (e.g., DRM_FORMAT_NV12)
-        uint64_t                 modifier = 0;  // DRM format modifier
+        int                       fd       = -1; // DMA-BUF file descriptor (caller must close)
+        uint32_t                  format   = 0;  // DRM fourcc format (e.g., DRM_FORMAT_NV12)
+        uint64_t                  modifier = 0;  // DRM format modifier
         Hyprutils::Math::Vector2D size;
-        int                      planes = 1;
-        std::array<uint32_t, 4>  offsets{};
-        std::array<uint32_t, 4>  strides{};
+        int                       planes = 1;
+        std::array<uint32_t, 4>   offsets{};
+        std::array<uint32_t, 4>   strides{};
 
-        bool                     valid() const { return fd >= 0; }
+        bool                      valid() const {
+            return fd >= 0;
+        }
     };
 
     /*
@@ -55,10 +57,10 @@ namespace Hyprtoolkit {
         void*       m_swscale  = nullptr;
         void*       m_libva    = nullptr; // For DMA-BUF export
 
-        bool        m_available          = false;
+        bool        m_available             = false;
         bool        m_dmaBufExportSupported = false;
-        std::string m_hwAccelName        = "";
-        unsigned    m_versionMajor       = 0;
+        std::string m_hwAccelName           = "";
+        unsigned    m_versionMajor          = 0;
 
         // Function pointers - opaque to avoid FFmpeg header dependency
         struct SFunctions;
@@ -113,14 +115,14 @@ namespace Hyprtoolkit {
         bool                      setupSwsContext();
         void                      cleanup();
 
-        bool                      m_valid            = false;
-        bool                      m_atEnd            = false;
-        bool                      m_useHwDec         = false;
-        bool                      m_dmaBufAvailable  = false;
-        Hyprutils::Math::Vector2D m_size             = {};
-        double                    m_fps              = 30.0;
-        double                    m_duration         = 0.0;
-        int                       m_pixelFormat      = -1; // AVPixelFormat from decoded frame
+        bool                      m_valid           = false;
+        bool                      m_atEnd           = false;
+        bool                      m_useHwDec        = false;
+        bool                      m_dmaBufAvailable = false;
+        Hyprutils::Math::Vector2D m_size            = {};
+        double                    m_fps             = 30.0;
+        double                    m_duration        = 0.0;
+        int                       m_pixelFormat     = -1; // AVPixelFormat from decoded frame
 
         std::vector<uint8_t>      m_frameBuffer;
 

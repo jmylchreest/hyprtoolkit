@@ -135,8 +135,7 @@ bool CGLTexture::uploadFromDmaBuf(const SDmaBufFrame& frame) {
     m_eglImage = g_openGL->createEGLImage(attrs);
 
     if (m_eglImage == EGL_NO_IMAGE_KHR) {
-        g_logger->log(HT_LOG_ERROR, "CGLTexture: failed to create EGLImage from DMA-BUF (format=0x{:x} modifier=0x{:x})",
-                      attrs.format, attrs.modifier);
+        g_logger->log(HT_LOG_ERROR, "CGLTexture: failed to create EGLImage from DMA-BUF (format=0x{:x} modifier=0x{:x})", attrs.format, attrs.modifier);
         return false;
     }
 
